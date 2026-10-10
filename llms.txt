@@ -1,0 +1,15 @@
+# agentic-write
+
+Route copy jobs to Claude, GPT, or Workers AI.
+
+Keywords: copywriting, llm-router, captions, agentic-suite, claude-code, codex, cli, mcp.
+
+- SDK: import { summarizeText, dispatchText } from "agentic-write".
+- CLI: agentic-write summary --text "...".
+- MCP: run agentic-write mcp, then call summarize_text.
+
+## Docs
+
+- README: https://github.com/pooriaarab/agentic-write
+- Core contract: https://github.com/pooriaarab/agentic-write/blob/main/docs/agentic-core.md
+- License: MIT

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "agentic-write": {
+      "command": "npx",
+      "args": ["-y", "agentic-write", "mcp"]
+    }
+  }
+}
