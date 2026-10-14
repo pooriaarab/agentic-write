@@ -1,168 +1,83 @@
-# Agentic write
+# agentic-write
 
-Route copy jobs to Claude, GPT, or Workers AI.
+[![npm version](https://img.shields.io/npm/v/agentic-write)](https://www.npmjs.com/package/agentic-write)
+[![Monthly downloads](https://img.shields.io/npm/dm/agentic-write)](https://www.npmjs.com/package/agentic-write)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://opensource.org/license/mit)
 
-One fetch-based router serves the library, CLI, MCP server, and edge worker.
-The package uses `agentic-core` and has no LLM SDK dependencies.
-Version 0.1.0 requires Node.js 18 or later.
+agentic-write is an open-source copywriting wrapper for Node.js applications and AI agents, with Anthropic Claude, OpenAI GPT, and Cloudflare Workers AI adapters.
 
-## Three usecases
-
-1. Draft a post caption.
-2. Draft a short mail.
-3. Draft a spoken script.
-
-## Try the CLI
-
-Build the source before you run these commands.
-Dry run is the default, even when keys exist.
-It returns deterministic text, sends no request, and records no cost.
+## Install
 
 ```sh
-node dist/cli.js write --kind post --brief "autumn boots on sale"
+npm install agentic-write
 ```
 
-Observed output:
+Requires Node.js 18 or later. Includes TypeScript declarations and three direct runtime dependencies; no vendor SDK dependency.
 
-```json
-{"dryRun":true,"vendor":"dry-run","kind":"post","text":"Discover autumn boots on sale. Take a closer look today.","chars":56}
-```
-
-```sh
-node dist/cli.js write --kind mail --brief "autumn boots"
-node dist/cli.js write --kind script --brief "autumn boots"
-```
-
-Observed output:
-
-```json
-{"dryRun":true,"vendor":"dry-run","kind":"mail","text":"Subject: autumn boots\n\nHello,\nHere is a quick update about autumn boots.\nReply to learn more.\nThank you.","chars":104}
-{"dryRun":true,"vendor":"dry-run","kind":"script","text":"Hook: Let's talk about autumn boots.\nBody: Here is what matters about autumn boots.\nClose: Take the next step today.","chars":116}
-```
-
-Use `--brief-file` instead of `--brief` to read a file.
-Add `--live` to send a vendor request.
-Choose `--vendor auto`, `claude`, `gpt`, or `workers-ai`.
-Unknown flags return a usage error.
-
-## Select a vendor
-
-Auto selection checks Claude, GPT, then Workers AI.
-An explicit vendor takes priority.
-Live requests without required keys fail with `VendorError`.
-
-| Vendor | Required environment variables | Default model |
-| --- | --- | --- |
-| Claude | `ANTHROPIC_API_KEY` | `claude-sonnet-4-5` |
-| GPT | `OPENAI_API_KEY` | `gpt-4o-mini` |
-| Workers AI | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AI_GATEWAY_ID` | `@cf/meta/llama-3.1-8b-instruct` |
-
-Claude and GPT use direct endpoints by default.
-Set `CLOUDFLARE_ACCOUNT_ID` and `AI_GATEWAY_ID` to use Cloudflare AI Gateway.
-When present, `CLOUDFLARE_API_TOKEN` supplies gateway authentication.
-Workers AI always uses the Cloudflare endpoint with the gateway header.
-Requests time out after 30 seconds by default.
-
-## Use the library
-
-Import `writeCopy` from `agentic-write` after installation.
-This source checkout example uses the built library:
+## Draft your first caption
 
 ```js
-import { writeCopy } from "./dist/index.js";
-console.log(await writeCopy("post", "autumn boots"));
+import { writeCopy } from "agentic-write";
+const result = await writeCopy("post", "autumn boots on sale");
+console.log(result.dryRun, result.text);
 ```
 
-Pass `dryRun: false` for live requests.
-Options accept `vendor`, `env`, `fetchFn`, `timeoutMs`, `caps`, and core `guards`.
-The library exports the shared core API and `DEFAULT_BRAND`.
+Expect `true` and `Discover autumn boots on sale. Take a closer look today.`
+The default returns deterministic template text, without keys, network calls, or usage costs.
 
-Caps span calls per vendor within one process.
-Defaults allow 10 calls and 20,000 characters.
-The router reserves brief characters before fetch and accumulates returned text characters after success.
-A request that exceeds the known budget fails before fetch.
-An oversized vendor response fails after fetch without recording a successful write.
-Failed requests consume their reservation. Dry runs consume none.
-Use `resetWriteCaps()` to clear counters.
-Optional guards check the brief first and record successful live calls.
-Costs record returned characters as units, not currency.
+## Features and coverage
 
-## Use MCP
+- Draft three copy kinds: `post`, `mail`, and `script`.
+- Select a vendor explicitly, or use automatic credential-based selection.
+- Route Anthropic and OpenAI requests through Cloudflare AI Gateway when configured.
+- Return text, character count, and token usage when the vendor provides it.
 
-Start the stdio server:
+| Vendor | Status | Required environment variables | Default model in source |
+| --- | --- | --- | --- |
+| Anthropic Claude | Implemented: Messages API | `ANTHROPIC_API_KEY` | `claude-sonnet-4-5` |
+| OpenAI GPT | Implemented: Chat Completions API | `OPENAI_API_KEY` | `gpt-4o-mini` |
+| Cloudflare Workers AI | Implemented: compatible chat endpoint | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AI_GATEWAY_ID` | `@cf/meta/llama-3.1-8b-instruct` |
+
+Three live provider paths have mocked tests; this rewrite includes no live credential checks.
+Export keys in your shell, or pass an `env` map through SDK options. The package does not load `.env` files.
+Pass `dryRun: false` to call a vendor. Automatic selection checks Claude, GPT, then Workers AI.
+Set `CLOUDFLARE_ACCOUNT_ID` and `AI_GATEWAY_ID` to route Claude or GPT through AI Gateway.
+`CLOUDFLARE_API_TOKEN`, when present, supplies gateway authentication.
+
+## Runtime surfaces
 
 ```sh
-node dist/cli.js mcp
+npx agentic-write write --kind post --brief "autumn boots on sale"
+npx agentic-write summary --text "hello world hello"
+npx agentic-write dispatch --text "hello" --dry-run
+npx agentic-write costs
+npx agentic-write mcp
 ```
 
-The installed server bin is `agentic-write-mcp`.
-The server advertises `io.github.pooriaarab/agentic-write` in its registry metadata.
+The CLI has five operational commands, plus `help` and `version` and their flag aliases.
+`write` accepts `--brief-file` instead of `--brief`, `--vendor auto|claude|gpt|workers-ai`, and `--live`.
+The Model Context Protocol (MCP) server exposes four tools: `write_copy`, `summarize_text`, `dispatch_text`, and `get_cost_report`.
+The `agentic-write-mcp` binary starts the same server. Default dispatch routes use the shared local adapter.
+The Worker you deploy has `GET /health`, `POST /summarize`, and `POST /write`; Worker drafts are always offline.
 
-| Tool | Input | Result |
-| --- | --- | --- |
-| `write_copy` | `kind`, `brief`, optional `vendor`, optional `dryRun` | Copy draft and usage |
-| `summarize_text` | `text` | Text statistics |
-| `dispatch_text` | `text`, optional `dryRun` | Route receipt |
-| `get_cost_report` | None | Session totals |
+## Behavior limits
 
-`write_copy` defaults to dry run.
-Guard and vendor failures return MCP error results.
+Requests default to a 30-second timeout, without automatic retries or provider failover.
+Per-vendor caps default to 10 calls and 20,000 characters within one process.
+Calls reserve brief characters before fetch, then replace that reservation with returned characters after success.
+Failed requests retain their reservation. Oversized output can trigger a guard error after a paid request.
+SDK options accept `caps`, `guards`, `timeoutMs`, and `fetchFn`. `resetWriteCaps()` clears counters.
+Usage records returned characters as units, not currency. Dry runs consume no caps or usage units.
+Cost totals live in memory; a separate CLI process cannot read a previous command's totals.
+The package does not publish posts, send email, or provide a managed model service.
 
-## Use the worker
+## Links and status
 
-The worker requires no vendor keys and always drafts offline.
+[Package](https://www.npmjs.com/package/agentic-write) · [Source and support](https://github.com/pooriaarab/agentic-write)
 
-| Route | Input | Result |
-| --- | --- | --- |
-| `GET /health` | None | Pack name and version |
-| `POST /summarize` | JSON with `text` | Text statistics |
-| `POST /write` | JSON with `kind` and `brief` | Dry-run copy |
-
-Invalid bodies return 400. Unknown routes return 404.
-
-## Read statistics and costs
-
-```sh
-node dist/cli.js summary --text "hello world hello"
-node dist/cli.js costs
-node dist/cli.js --version
-```
-
-Observed output:
-
-```text
-{"chars":17,"words":3,"lines":1,"topWords":[{"word":"hello","count":2},{"word":"world","count":1}]}
-{"entries":[],"dispatches":0,"units":0}
-0.1.0
-```
-
-Costs stay in memory. Each new CLI process starts with empty totals.
-The CLI also keeps the scaffold `dispatch`, `help`, and `version` commands.
-
-## Check the package
-
-```sh
-npm run build
-npm run typecheck
-npm test
-npm pack --pack-destination /tmp/aw
-npx -y file:/tmp/aw/agentic-write-0.1.0.tgz write --kind post --brief "autumn boots on sale"
-```
-
-The installed command returns the same post JSON shown above.
-Tests use stubbed fetch functions and never call a live vendor.
-
-## Sources
-
-[LiteLLM](https://github.com/BerriAI/litellm) informs the unified router shape and per-call vendor selection.
-This package implements original fetch-based adapters.
-
-Endpoint references, checked on 2026-10-10:
-
-- [Cloudflare Anthropic provider](https://developers.cloudflare.com/ai-gateway/usage/providers/anthropic/)
-- [Cloudflare OpenAI provider](https://developers.cloudflare.com/ai-gateway/usage/providers/openai/)
-- [Cloudflare Workers AI provider](https://developers.cloudflare.com/ai-gateway/usage/providers/workersai/)
+Version 0.1.0 APIs can change. Public case studies are not yet published.
+Run `npm run build`, `npm run typecheck`, and `npm test` before contributing.
 
 ## License
 
-MIT. See `LICENSE`.
+MIT.
