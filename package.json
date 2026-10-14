@@ -1,6 +1,6 @@
 {
   "name": "agentic-write",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Draft captions, emails, and scripts with Anthropic Claude, OpenAI GPT, or Cloudflare Workers AI through a Node.js SDK, CLI, and MCP.",
   "keywords": [
     "copywriting",
